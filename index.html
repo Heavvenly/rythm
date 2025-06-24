@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rhythm Game</title>
+  <link rel="stylesheet" href="style.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Funnel+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet"></head>
+<body>
+
+
+  <div id="menu">
+    <h1 id="title">u got rythm?</h1>
+    <p class="subtitle">Choose your track!</p>
+    <div id="song-selector-container">
+      <div id="song-list">
+        <button onclick="startGame('song1')">☕️☀️ Espresso</button>
+        <button onclick="startGame('song2')">😇🪽 Good Graces</button>
+        <button onclick="startGame('song3')">⏰⏱️ 15 Minutes</button>
+        <button onclick="startGame('song4')">🪽🕊️ Feather</button>
+      </div>
+      <img src="sabrina.PNG" alt="Sabrina">
+    </div>
+
+  </div>
+
+  <div id="transition-overlay">
+      </div>
+  <div id="game" class="hidden">
+    <h1 id="title">u got rythm?</h1>
+    <h3 id="song-title"></h3>
+    <div id="columns">
+      <div class="column" id="col-a">A</div>
+      <div class="column" id="col-s">S</div>
+      <div class="column" id="col-d">D</div>
+      <div class="column" id="col-f">F</div>
+    </div>
+    <div id="feedback"></div>
+    <div id="hud">
+    <div id="score">Score: 0</div>
+    <div id="combo">Combo: 0</div>
+    <button id="homebutton" onclick="returnToMenu()">Back to Menu</button>
+    </div>
+    <audio id="audio" preload="auto"></audio>
+    <div id="end-screen" class="hidden">
+  <h2>🎉 Song Complete!</h2>
+  <div id="final-rank"></div>
+  <div id="final-score"></div>
+  <div id="final-misses"></div>
+  <div id="next-rank-progress"></div>
+  <button onclick="returnToMenu()">Back to Menu</button>
+</div>
+
+
+
+  <script src="songs/song1.js"></script>
+  <script src="songs/song2.js"></script>
+  <script src="songs/song3.js"></script>
+  <script src="songs/song4.js"></script>
+  <script src="game.js"></script>
+</body>
+</html
