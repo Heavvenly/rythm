@@ -1,6 +1,6 @@
 window.song4 = {
   startDelay: 0, // delay in ms (2 seconds before music starts)
-  audioOffset: 2000,
+  audioOffset: 2200,
   songName: "Feather: Sabrina Carpenter",
   notes: [
   {
