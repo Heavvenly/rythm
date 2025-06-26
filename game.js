@@ -9,6 +9,8 @@ let recording = false; // not where you change this
 let recordedNotes = [];
 let totalNotes = 0;
 let missedNotes = 0;
+
+
 function toggleRecording() {
   recording = !recording;
   if (recording) {
@@ -35,7 +37,9 @@ function updateHUD() {
   document.getElementById("combo").textContent = `Combo: ${combo}`;
 }
 function startGame(songName) {
-  songData = window[songName];
+
+
+  songData = structuredClone(window[songName]); // resets all note flags
   const audio = document.getElementById("audio");
 
   document.getElementById("menu").classList.add("hidden");
@@ -52,11 +56,13 @@ function startGame(songName) {
   const songtitle = songData.songName;
   document.getElementById("song-title").textContent = songtitle;
 
+
   audio.src = `${songName}.mp3`;
   audio.currentTime = 0;
 
+
   // Automatically start recording
-  recording = true;
+  recording = false;
   recordedNotes = [];
 
   setTimeout(() => {
@@ -79,7 +85,6 @@ function startGame(songName) {
     game.classList.remove('hidden');
     game.classList.add('flashy-enter');
   }, 100);
-
   // Let the glow hit and fade out
   setTimeout(() => {
     overlay.style.opacity = '0';
@@ -89,27 +94,38 @@ function startGame(songName) {
   recording = false;
   console.log("🛑 Recording finished! Paste this into your song file:");
   console.log(JSON.stringify(recordedNotes, null, 2));
-  const maxScore = totalNotes * 225;
+  const maxScore = totalNotes * 215;
   const rankPercent = score / maxScore;
   let rank = "D";
 
-  if (rankPercent >= 1) rank = "S+";
-  else if (rankPercent >= 0.95) rank = "S";
-  else if (rankPercent >= 0.85) rank = "A";
-  else if (rankPercent >= 0.70) rank = "B";
-  else if (rankPercent >= 0.50) rank = "C";
+  if (rankPercent >=.96) rank = "S+";
+  else if (rankPercent >= 0.93) rank = "S";
+  else if (rankPercent >= 0.87) rank = "S-";
+  else if (rankPercent >= 0.80) rank = "A";
+  else if (rankPercent >= 0.60) rank = "B";
+  else if (rankPercent >= 0.40) rank = "C";
 
   // How many more points needed for next rank
   let nextTarget = 0;
-  if (rank === "D") nextTarget = Math.ceil(maxScore * 0.50);
-  else if (rank === "C") nextTarget = Math.ceil(maxScore * 0.70);
-  else if (rank === "B") nextTarget = Math.ceil(maxScore * 0.85);
-  else if (rank === "A") nextTarget = Math.ceil(maxScore * 0.95);
-  else if (rank === "S") nextTarget = Math.ceil(maxScore * 1);
+  if (rank === "D") nextTarget = Math.ceil(maxScore * 0.40);
+  else if (rank === "C") nextTarget = Math.ceil(maxScore * 0.60);
+  else if (rank === "B") nextTarget = Math.ceil(maxScore * 0.80);
+  else if (rank === "A") nextTarget = Math.ceil(maxScore * 0.87);
+  else if (rank === "S-") nextTarget = Math.ceil(maxScore * .93);
+  else if (rank === "S") nextTarget = Math.ceil(maxScore * .97);
   else nextTarget = score; // S+ = max
 
   const toNext = Math.max(0, nextTarget - score);
+  // Save highest rank per song
+  let songRanks = JSON.parse(localStorage.getItem("songRanks") || "{}");
+  const prevRank = songRanks[songData.songName] || "F";
 
+  // Only save if current rank is higher
+  const rankOrder = ["F", "D", "C", "B", "A", "S-", "S", "S+"];
+  if (rankOrder.indexOf(rank) > rankOrder.indexOf(prevRank)) {
+    songRanks[songData.songName] = rank;
+    localStorage.setItem("songRanks", JSON.stringify(songRanks));
+  }
   // Show end screen
 
   document.getElementById("end-screen").classList.remove("hidden");
@@ -119,14 +135,49 @@ function startGame(songName) {
   document.getElementById("final-misses").textContent = `Misses: ${missedNotes}`;
   document.getElementById("next-rank-progress").textContent = toNext > 0
     ? `${toNext} more points to reach next rank`
-    : `good work! you do got rythm!`;
+    : `Good work! You do got rythm!`;
 };
+updateRankProgressDisplay();
 }
+function updateRankProgressDisplay() {
+  const songRanks = JSON.parse(localStorage.getItem("songRanks") || "{}");
+  const rankOrder = ["F", "D", "C", "B", "A", "S-", "S", "S+"];
+  let countA = 0, countS = 0, countSPlus = 0;
+
+  for (let rank of Object.values(songRanks)) {
+    const idx = rankOrder.indexOf(rank);
+    if (idx >= rankOrder.indexOf("A")) countA++;
+    if (idx >= rankOrder.indexOf("S")) countS++;
+    if (idx === rankOrder.indexOf("S+")) countSPlus++;
+  }
+
+  document.getElementById("rankAProgress").textContent = `Songs with at least A Rank: ${countA}/8`;
+  document.getElementById("rankSProgress").textContent = `Songs with at least S Rank: ${countS}/8`;
+  document.getElementById("rankSPlusProgress").textContent = `Songs with S+ Rank: ${countSPlus}/8`;
+
+};
+
+
 function returnToMenu() {
+  // Hide game & end screen, show menu
   document.getElementById("end-screen").classList.add("hidden");
   document.getElementById("game").classList.add("hidden");
   document.getElementById("menu").classList.remove("hidden");
+
+  // Stop animation
+  cancelAnimationFrame(animationId);
+
+  // Stop audio
+  const audio = document.getElementById("audio");
   audio.pause();
+  audio.currentTime = 0;
+
+  // Clear notes
+  document.querySelectorAll(".note").forEach(n => n.remove());
+
+  // Reset music to menu
+  audio.src = `menusong.mp3`;
+  audio.play();
 }
 function gameLoop(timestamp) {
   const audio = document.getElementById("audio");
@@ -144,12 +195,15 @@ function gameLoop(timestamp) {
     let top = parseFloat(note.style.top);
     note.style.top = (top + 4) + "px";
     if (top > 600 && !note.classList.contains("hit")) {
+      const key = note.dataset.key;
       note.remove();
-      registerMiss();
+      registerMiss(key); // pass key that missed
     }
   });
 
   animationId = requestAnimationFrame(gameLoop);
+  const timeLeft = Math.max(0, audio.duration - audio.currentTime).toFixed(1);
+  document.getElementById("runtime").textContent = `Runtime: -${timeLeft}s`;
 }
 function updateComboVisuals() {
   if (combo >= comboBonusThreshold) {
@@ -170,18 +224,21 @@ function spawnNote(key) {
 function showFeedback(text, type) {
   const feedback = document.getElementById("feedback");
   feedback.textContent = text;
-  feedback.style.opacity = 1;
-
+  feedback.classList.remove("perfect", "miss");
   if (type === "miss") {
+    feedback.classList.add("miss");
     document.body.classList.add("miss-feedback");
     setTimeout(() => {
       document.body.classList.remove("miss-feedback");
     }, 300);
+  } else if (type === "perfect") {
+    feedback.classList.add("perfect");
   }
+  feedback.style.opacity = 1;
 
   setTimeout(() => {
     feedback.style.opacity = 0;
-  }, 300);
+  }, 700); // make feedback visible a bit longer
 }
 document.addEventListener("keydown", (e) => {
   let key = e.key.toLowerCase();
@@ -194,21 +251,23 @@ document.addEventListener("keydown", (e) => {
   } else {
     key = rawKey;
   }
-  if (!['a', 's', 'd', 'f'].includes(key)) return;
+  if (!['a', 's', 'd', 'f'].includes(key)) ;
 
   const col = document.getElementById("col-" + key);
   const notes = Array.from(col.getElementsByClassName("note"));
-
+  col.classList.add("active");
+  setTimeout(() => col.classList.remove("active"), 150);
   for (let note of notes) {
     const noteTop = parseFloat(note.style.top);
     const hitZone = 520;
     const tolerance = 60;
 
     const distance = Math.abs(noteTop - hitZone);
+
 if (distance < 15) {
   // Perfect hit
   note.classList.add("hit");
-  setTimeout(() => note.remove(), 300);
+  setTimeout(() => note.remove(), 150);
   combo++;
   let baseScore = 100;
   if (combo >= comboBonusThreshold) baseScore *= 2;
@@ -220,27 +279,43 @@ if (distance < 15) {
 } else if (distance < tolerance) {
   // Normal hit
   note.classList.add("hit");
-  setTimeout(() => note.remove(), 300);
+  setTimeout(() => note.remove(), 150);
   combo++;
   let baseScore = 100;
   if (combo >= comboBonusThreshold) baseScore *= 2;
   score += baseScore;
   updateHUD();
   updateComboVisuals();
+
   return;
 }
+
   }
 
   // Miss (no note in hit zone)
+
   registerMiss();
+
 });
-function registerMiss() {
+function registerMiss(key = null) {
   missedNotes++;
   combo = 0;
   updateHUD();
   updateComboVisuals();
   showFeedback("Miss!", "miss");
+
+  if (key) {
+    const col = document.getElementById("col-" + key);
+    col.classList.add("miss");
+    setTimeout(() => col.classList.remove("miss"), 200);
+  }
+  const activeCols = document.querySelectorAll(".active");
+  activeCols.forEach(col => {
+    col.classList.add("miss");
+    setTimeout(() => col.classList.remove("miss"), 200);
+  });
 }
+// makes colums clickable
 ['a', 's', 'd', 'f'].forEach((key) => {
   const col = document.getElementById("col-" + key);
   col.addEventListener("click", () => {
@@ -248,3 +323,4 @@ function registerMiss() {
     document.dispatchEvent(event);
   });
 });
+updateRankProgressDisplay();
